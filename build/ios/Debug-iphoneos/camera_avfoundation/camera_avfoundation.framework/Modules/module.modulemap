@@ -3,15 +3,9 @@ framework module camera_avfoundation {
 
   export *
   module * { export * }
+}
 
-  explicit module Test {
-    header "CameraPlugin_Test.h"
-    header "CameraPermissionUtils.h"
-    header "CameraProperties.h"
-    header "FLTCam.h"
-    header "FLTCam_Test.h"
-    header "FLTSavePhotoDelegate_Test.h"
-    header "FLTThreadSafeEventChannel.h"
-    header "QueueUtils.h"
-  }
+module camera_avfoundation.Swift {
+  header "camera_avfoundation-Swift.h"
+  requires objc
 }
