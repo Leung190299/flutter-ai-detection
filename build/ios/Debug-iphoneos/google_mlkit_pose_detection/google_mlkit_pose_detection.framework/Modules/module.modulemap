@@ -1,0 +1,6 @@
+framework module google_mlkit_pose_detection {
+  umbrella header "google_mlkit_pose_detection-umbrella.h"
+
+  export *
+  module * { export * }
+}
