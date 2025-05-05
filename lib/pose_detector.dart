@@ -1,8 +1,6 @@
-import 'package:ai_detection/pode_detector_new.dart';
+import 'package:ai_detection/pose_detector_rope_skipping.dart';
 import 'package:ai_detection/pose_painter.dart';
-import 'package:ai_detection/uitils/calculate.dart';
 import 'package:camera/camera.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
 
@@ -23,13 +21,16 @@ class _PoseDetectorViewState extends State<PoseDetectorView> {
   CustomPaint? _customPaint;
   String? _text;
   var _cameraLensDirection = CameraLensDirection.back;
-  final JumpDetector _jumpDetector = JumpDetector();
+  final RopeSkippingPoseDetector _jumpDetector = RopeSkippingPoseDetector();
+  final GlobalKey _cameraViewKey = GlobalKey();
 
   // Rope skipping state variables
   int jumpCount = 0;
   String previousState = "on_ground";
   double previousY = 0.0;
-  double jumpThreshold = 30.0; // adjust based on your environment
+  double jumpThreshold = 30.0;
+
+  Size screenSize = Size.zero;
 
   @override
   void dispose() async {
@@ -38,15 +39,165 @@ class _PoseDetectorViewState extends State<PoseDetectorView> {
     super.dispose();
   }
 
+  Size? _cameraPreviewSize;
+
+  @override
+  void initState() {
+    super.initState();
+    // We'll initialize the frame boundary when the layout is built
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Get the screen size to set the frame boundaries
+      final size = MediaQuery.of(context).size;
+      // Initially set with screen size, will be updated when camera is ready
+      setState(() {
+        screenSize = getWidgetSize() ?? size;
+        // Set initial frame boundary
+      });
+    });
+  }
+
+  Size? getWidgetSize() {
+    if (_cameraViewKey.currentContext == null) return null;
+
+    final RenderBox renderBox =
+        _cameraViewKey.currentContext!.findRenderObject() as RenderBox;
+    return renderBox.size;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return DetectorView(
-      title: 'Pose Detector',
-      customPaint: _customPaint,
-      text: _text,
-      onImage: _processImage,
-      initialCameraLensDirection: _cameraLensDirection,
-      onCameraLensDirectionChanged: (value) => _cameraLensDirection = value,
+    return Scaffold(
+      body: Stack(
+        children: [
+          DetectorView(
+            key: _cameraViewKey,
+            title: 'Pose Detector',
+            customPaint: _customPaint,
+            text: _text,
+            onImage: _processImage,
+            initialCameraLensDirection: _cameraLensDirection,
+            onCameraLensDirectionChanged: (value) =>
+                _cameraLensDirection = value,
+          ),
+          if (_cameraPreviewSize != null)
+            Positioned(
+              top: 100,
+              left: 10,
+              child: Container(
+                padding: const EdgeInsets.all(5),
+                color: Colors.black45,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Preview: ${_cameraPreviewSize!.width.toStringAsFixed(0)}x${_cameraPreviewSize!.height.toStringAsFixed(0)}',
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        if (_cameraPreviewSize != null) {
+                          // _jumpDetector.setFrameBoundary(
+                          //   getWidgetSize()!,
+                          // );
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text('Frame boundary recalibrated')),
+                          );
+                        }
+                      },
+                      child: const Text('Recalibrate Frame',
+                          style: TextStyle(color: Colors.lightBlue)),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          // Add a button to toggle the frame
+          Positioned(
+            bottom: 190,
+            right: 20,
+            child: FloatingActionButton(
+              heroTag: 'toggle_frame',
+              onPressed: () {
+                // setState(() {
+                //   _jumpDetector.toggleFrameActivation();
+                // });
+              },
+              backgroundColor: Colors.blue.withOpacity(0.7),
+              child: const Icon(
+                Icons.crop_din,
+                color: Colors.white,
+              ),
+            ),
+          ),
+          // Add a button to adjust frame size (smaller)
+          Positioned(
+            bottom: 120,
+            right: 20,
+            child: FloatingActionButton(
+              heroTag: 'adjust_frame',
+              onPressed: () {
+                if (_cameraPreviewSize != null) {
+                  // setState(() {
+                  //   // Adjust frame size (make it smaller)
+                  //   _jumpDetector.setFrameBoundary(
+                  //     _cameraPreviewSize!,
+                  //   );
+                  // });
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                        content: Text('Frame size adjusted to smaller')),
+                  );
+                }
+              },
+              backgroundColor: Colors.green.withOpacity(0.7),
+              child: const Icon(
+                Icons.fit_screen,
+                color: Colors.white,
+              ),
+            ),
+          ),
+          // Add a button to reset jump count
+          Positioned(
+            bottom: 50,
+            right: 20,
+            child: FloatingActionButton(
+              heroTag: 'reset_count',
+              onPressed: () {
+                // setState(() {
+                //   _jumpDetector.resetJumpCount();
+                //   _text = 'Jump Count: 0';
+                // });
+              },
+              backgroundColor: Colors.red.withOpacity(0.7),
+              child: const Icon(
+                Icons.refresh,
+                color: Colors.white,
+              ),
+            ),
+          ),
+          // Display jump count prominently
+          if (_text != null && _text!.isNotEmpty)
+            Positioned(
+              top: 50,
+              left: 0,
+              right: 0,
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                color: Colors.black45,
+                child: Text(
+                  _text!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
@@ -58,9 +209,28 @@ class _PoseDetectorViewState extends State<PoseDetectorView> {
       _text = '';
     });
     final poses = await _poseDetector.processImage(inputImage);
-    if (poses.isNotEmpty) {
-      final test = _jumpDetector.detectAndCountJump(poses.first);
-      print("Jump Count: $test");
+    if (poses.isNotEmpty &&
+        inputImage.metadata?.size != null &&
+        inputImage.metadata?.rotation != null) {
+      // Use the camera preview size if available, or fall back to image size
+
+      // // If the frame boundary is still at default (Rect.zero), set it now
+      // if (_jumpDetector.frameBoundary == Rect.zero) {
+      //   _jumpDetector.setFrameBoundary(screenSize);
+      // }
+
+      // Pass screen size, rotation, and camera direction to check if person is in frame
+      _jumpDetector.detectPose(poses.first, screenSize: screenSize);
+
+      // Update the UI with jump count and person-in-frame status
+      // final inFrame = _jumpDetector.isPersonInFrame(
+      //     poses.first,
+      //     screenSize,
+      //     inputImage.metadata!.size,
+      //     inputImage.metadata!.rotation,
+      //     _cameraLensDirection);
+
+      // print("Jump Count: $jumpCount, In frame: $inFrame");
     }
     if (inputImage.metadata?.size != null &&
         inputImage.metadata?.rotation != null) {
@@ -69,6 +239,7 @@ class _PoseDetectorViewState extends State<PoseDetectorView> {
         inputImage.metadata!.size,
         inputImage.metadata!.rotation,
         _cameraLensDirection,
+        // Pass jump detector to draw frame
       );
       _customPaint = CustomPaint(painter: painter);
     } else {
@@ -80,59 +251,5 @@ class _PoseDetectorViewState extends State<PoseDetectorView> {
     if (mounted) {
       setState(() {});
     }
-  }
-
-  // Define threshold for jump detection
-  double angleThreshold = 9.0; // Angle threshold for detecting a jump
-
-  // function count rope skipping with multiple body points
-  int countRopeSkipping(List<Pose> poses) {
-    int localCount = 0;
-    for (var pose in poses) {
-      // Check if all required landmarks are detected for both legs
-      if (pose.landmarks[PoseLandmarkType.leftKnee] != null &&
-          pose.landmarks[PoseLandmarkType.leftAnkle] != null &&
-          pose.landmarks[PoseLandmarkType.leftFootIndex] != null &&
-          pose.landmarks[PoseLandmarkType.rightKnee] != null &&
-          pose.landmarks[PoseLandmarkType.rightAnkle] != null &&
-          pose.landmarks[PoseLandmarkType.rightFootIndex] != null) {
-        // Calculate angles for both legs
-        double leftLegAngle = calculateAngle(
-            pose.landmarks[PoseLandmarkType.leftKnee]!,
-            pose.landmarks[PoseLandmarkType.leftAnkle]!,
-            pose.landmarks[PoseLandmarkType.leftFootIndex]!);
-
-        double rightLegAngle = calculateAngle(
-            pose.landmarks[PoseLandmarkType.rightKnee]!,
-            pose.landmarks[PoseLandmarkType.rightAnkle]!,
-            pose.landmarks[PoseLandmarkType.rightFootIndex]!);
-
-        // Use average angle of both legs
-        double averageAngle = (leftLegAngle + rightLegAngle) / 2;
-
-        switch (previousState) {
-          case "on_ground":
-            // When the angle is greater than threshold, person is likely in jumping position
-            if (averageAngle > angleThreshold) {
-              previousState = "in_air";
-              localCount += 1;
-              print(
-                  "Jump Count: ${jumpCount + localCount} (Angle: $averageAngle)");
-            }
-            break;
-          case "in_air":
-            // When the angle becomes less than threshold, person has landed
-            if (averageAngle < angleThreshold - 20) {
-              // Add hysteresis to prevent false counts
-              previousState = "on_ground";
-            }
-            break;
-        }
-      } else {
-        // Handle the case where landmarks are not detected
-        print('Required leg landmarks not detected');
-      }
-    }
-    return localCount;
   }
 }

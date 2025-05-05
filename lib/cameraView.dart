@@ -13,6 +13,7 @@ class CameraView extends StatefulWidget {
       this.onCameraFeedReady,
       this.onDetectorViewModeChanged,
       this.onCameraLensDirectionChanged,
+      this.onCameraPreviewSizeChanged,
       this.initialCameraLensDirection = CameraLensDirection.back});
 
   final CustomPaint? customPaint;
@@ -20,6 +21,7 @@ class CameraView extends StatefulWidget {
   final VoidCallback? onCameraFeedReady;
   final VoidCallback? onDetectorViewModeChanged;
   final Function(CameraLensDirection direction)? onCameraLensDirectionChanged;
+  final Function(Size previewSize)? onCameraPreviewSizeChanged;
   final CameraLensDirection initialCameraLensDirection;
 
   @override
@@ -68,7 +70,7 @@ class _CameraViewState extends State<CameraView> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(body: _liveFeedBody());
+    return _liveFeedBody();
   }
 
   Widget _liveFeedBody() {
@@ -90,11 +92,8 @@ class _CameraViewState extends State<CameraView> {
                     child: widget.customPaint,
                   ),
           ),
-          _backButton(),
+          // Only keep the essential controls
           _switchLiveCameraToggle(),
-          _detectionViewModeToggle(),
-          _zoomControl(),
-          _exposureControl(),
         ],
       ),
     );
@@ -269,6 +268,7 @@ class _CameraViewState extends State<CameraView> {
       if (!mounted) {
         return;
       }
+      widget.onCameraPreviewSizeChanged?.call(_controller!.value.previewSize!);
       _controller?.getMinZoomLevel().then((value) {
         _currentZoomLevel = value;
         _minAvailableZoom = value;

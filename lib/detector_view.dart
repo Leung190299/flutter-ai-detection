@@ -17,6 +17,7 @@ class DetectorView extends StatefulWidget {
     this.onCameraFeedReady,
     this.onDetectorViewModeChanged,
     this.onCameraLensDirectionChanged,
+    this.onCameraPreviewSizeChanged,
   });
 
   final String title;
@@ -27,6 +28,7 @@ class DetectorView extends StatefulWidget {
   final Function()? onCameraFeedReady;
   final Function(DetectorViewMode mode)? onDetectorViewModeChanged;
   final Function(CameraLensDirection direction)? onCameraLensDirectionChanged;
+  final Function(Size previewSize)? onCameraPreviewSizeChanged;
   final CameraLensDirection initialCameraLensDirection;
 
   @override
@@ -44,6 +46,7 @@ class _DetectorViewState extends State<DetectorView> {
 
   @override
   Widget build(BuildContext context) {
+    // Return the camera view directly
     return _mode == DetectorViewMode.liveFeed
         ? CameraView(
             customPaint: widget.customPaint,
@@ -52,6 +55,7 @@ class _DetectorViewState extends State<DetectorView> {
             onDetectorViewModeChanged: _onDetectorViewModeChanged,
             initialCameraLensDirection: widget.initialCameraLensDirection,
             onCameraLensDirectionChanged: widget.onCameraLensDirectionChanged,
+            onCameraPreviewSizeChanged: widget.onCameraPreviewSizeChanged,
           )
         : const SizedBox();
   }

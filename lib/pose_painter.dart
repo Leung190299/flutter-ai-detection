@@ -1,3 +1,4 @@
+import 'package:ai_detection/pode_detector_new.dart'; // Import JumpDetector to access frame boundaries
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
@@ -6,16 +7,15 @@ import 'coordinates_translator.dart';
 
 class PosePainter extends CustomPainter {
   PosePainter(
-    this.poses,
-    this.imageSize,
-    this.rotation,
-    this.cameraLensDirection,
-  );
+      this.poses, this.imageSize, this.rotation, this.cameraLensDirection,
+      [this.jumpDetector]);
 
   final List<Pose> poses;
   final Size imageSize;
   final InputImageRotation rotation;
   final CameraLensDirection cameraLensDirection;
+  final JumpDetector?
+      jumpDetector; // Optional jump detector to get frame boundaries
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -33,6 +33,42 @@ class PosePainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3.0
       ..color = Colors.blueAccent;
+
+    // Draw the detection frame if jumpDetector is provided and frame is active
+    if (jumpDetector != null && jumpDetector!.isFrameActive) {
+      final framePaint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3.0
+        ..color = Colors.red;
+
+      // Draw the frame
+      canvas.drawRect(jumpDetector!.frameBoundary, framePaint);
+
+      // Optional: Add text to indicate purpose of the frame
+      const textSpan = TextSpan(
+        text: 'Jump Detection Zone',
+        style: TextStyle(
+          color: Colors.red,
+          fontSize: 18,
+        ),
+      );
+      final textPainter = TextPainter(
+        text: textSpan,
+        textDirection: TextDirection.ltr,
+      );
+      textPainter.layout(
+        minWidth: 0,
+        maxWidth: size.width,
+      );
+
+      // Position text above the frame
+      final offset = Offset(
+        jumpDetector!.frameBoundary.left +
+            (jumpDetector!.frameBoundary.width - textPainter.width) / 2,
+        jumpDetector!.frameBoundary.top - 30,
+      );
+      textPainter.paint(canvas, offset);
+    }
 
     for (final pose in poses) {
       pose.landmarks.forEach((_, landmark) {
